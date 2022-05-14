@@ -52,6 +52,45 @@ ChaseCamera = function(){
   }
 }
 
+//observer camera
+ObserverCamera = function() {
+  /* the only data it needs is the position of the camera */
+  this.frame = glMatrix.mat4.create();
+  this.xMovement = 0;
+  this.yMovement = 0;
+  this.zMovement = 0;
+  this.mouseCoords = [0, 0];
+
+  //origine del frame: in un angolo
+  let translationOrigObserverMatrix = glMatrix.mat4.create();
+  glMatrix.mat4.fromTranslation(translationOrigObserverMatrix, [-100, -30, -100]);
+  glMatrix.mat4.mul(this.frame, translationOrigObserverMatrix, this.frame);
+  let rotationOriginObserverMatrix = glMatrix.mat4.create();
+  glMatrix.mat4.fromRotation(rotationOriginObserverMatrix, -Math.PI / 4, [0, 1, 0]);
+  glMatrix.mat4.mul(this.frame, rotationOriginObserverMatrix, this.frame);
+  glMatrix.mat4.fromRotation(rotationOriginObserverMatrix, Math.PI / 8, [1, 0, 0]);
+  glMatrix.mat4.mul(this.frame, rotationOriginObserverMatrix, this.frame);
+
+  
+  this.update = function(cp){ //cp non verrà mai utilizzata
+    let translationMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.fromTranslation(translationMatrix, [this.xMovement, this.yMovement, this.zMovement]);
+    glMatrix.mat4.mul(this.frame, translationMatrix, this.frame);
+    //rotazione con il mouse
+    let rotationMatrix = glMatrix.mat4.create();
+
+    glMatrix.mat4.fromRotation(rotationMatrix, -this.mouseCoords[1] * 0.001, [1, 0, 0]); //angolo in radianti * asse, qui usi l'asse x perchè per la regola della mano destra ciò che non cambia è l'asse x
+    glMatrix.mat4.mul(this.frame, rotationMatrix, this.frame);
+    glMatrix.mat4.fromRotation(rotationMatrix, -this.mouseCoords[0]* 0.001, [0, 1, 0]);
+    glMatrix.mat4.mul(this.frame, rotationMatrix, this.frame);
+  }
+
+  /* return the transformation matrix to transform from worlod coordiantes to the view reference frame */
+  this.matrix = function(){
+    return this.frame;
+  }
+}
+
 
 /* the main object to be implementd */
 var Renderer = new Object();
@@ -61,6 +100,7 @@ Renderer.cameras = [];
 // add a FollowFromUpCamera
 Renderer.cameras.push(new FollowFromUpCamera());
 Renderer.cameras.push(new ChaseCamera());
+Renderer.cameras.push(new ObserverCamera());
 
 // set the camera currently in use
 Renderer.currentCamera = 1;
@@ -535,6 +575,8 @@ Renderer.setupAndStart = function () {
   Renderer.canvas.addEventListener('mousemove',on_mouseMove,false);
   Renderer.canvas.addEventListener('keydown',on_keydown,false);
   Renderer.canvas.addEventListener('keyup',on_keyup,false);
+  Renderer.canvas.addEventListener('mouseup',on_mouseup,false);
+  Renderer.canvas.addEventListener('mousedown',on_mousedown,false);
 
   Renderer.Display();
 }
@@ -556,13 +598,98 @@ Renderer.loadTexture = function(tu, url, wrappingMode = this.gl.REPEAT){
 	});
 }
 
-on_mouseMove = function(e){}
+movingMouse = false;
+absoluteMouseCoords = [0,0]; //coordinate assolute quando inizi a cliccare il mouse
+
+on_mouseup = function(e) {
+  movingMouse = false;
+  Renderer.cameras[Renderer.currentCamera].mouseCoords = [0,0]; //per evitare che si muova all'infinito
+}
+
+on_mousedown = function(e) {
+  movingMouse = true;
+  absoluteMouseCoords = [e.offsetX, e.offsetY];
+}
+
+on_mouseMove = function(e){
+  if(movingMouse){
+    let newCoords = [e.offsetX, e.offsetY];
+    Renderer.cameras[Renderer.currentCamera].mouseCoords = [ //differenza tra le coordinate assolute che erano state segnate a dove hai mosso il mouse
+      newCoords[0] - absoluteMouseCoords[0],
+      newCoords[1] - absoluteMouseCoords[1]
+    ];
+    absoluteMouseCoords = newCoords;
+  }
+}
 
 on_keyup = function(e){
-	Renderer.car.control_keys[e.key] = false;
+  if(Renderer.currentCamera == 2) { //se la modalità di vista è l'observer view
+    switch(e.key) {
+      case 'D':
+      case 'd':
+      case 'A':
+      case 'a': {
+        Renderer.cameras[Renderer.currentCamera].xMovement = 0;
+        break;
+      }
+      case 'w':
+      case 'W':
+      case 'S':
+      case 's': {
+        Renderer.cameras[Renderer.currentCamera].zMovement = 0;
+        break;
+      }
+      case 'q':
+      case 'Q':
+      case 'Z':
+      case 'z': {
+        Renderer.cameras[Renderer.currentCamera].yMovement = 0;
+        break;
+      }
+    }
+  } else { //chase camera/followfromup
+	  Renderer.car.control_keys[e.key] = false;
+  }
 }
+
+
 on_keydown = function(e){
-	Renderer.car.control_keys[e.key] = true;
+  if(Renderer.currentCamera == 2) { //se la modalità di vista è l'observer view
+    switch(e.key) {
+      case 'D':
+      case 'd': {
+        Renderer.cameras[Renderer.currentCamera].xMovement = -1;
+        break;
+      }
+      case 'A':
+      case 'a': {
+        Renderer.cameras[Renderer.currentCamera].xMovement = +1;
+        break;
+      }
+      case 'W':
+      case 'w': {
+        Renderer.cameras[Renderer.currentCamera].zMovement = +1;
+        break;
+      }
+      case 'S':
+      case 's': {
+        Renderer.cameras[Renderer.currentCamera].zMovement = -1;
+        break;
+      }
+      case 'Q':
+      case 'q': {
+        Renderer.cameras[Renderer.currentCamera].yMovement = -1;
+        break;
+      }
+      case 'Z':
+      case 'z': {
+        Renderer.cameras[Renderer.currentCamera].yMovement = +1;
+        break;
+      }
+    }
+  } else { //chase camera/followfromup
+	  Renderer.car.control_keys[e.key] = true;
+  }
 }
 
 window.onload = Renderer.setupAndStart;

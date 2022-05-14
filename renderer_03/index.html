@@ -46,7 +46,8 @@
 <label for="cameras">Choose a camera:</label>
 <select name="cameras" id="cameras" onchange="update_camera(this.value)">
 	<option value="1">Chase</option>
-  	<option value="0">FollowFromUp</option>
+	<option value="0">Follow from up</option>
+	<option value="2">Observer camera</option>
 </select>
 <br/>
 <input type="checkbox" name="wireframe" id="wireframe" onchange="Renderer.wireframeEnabled = this.checked">
