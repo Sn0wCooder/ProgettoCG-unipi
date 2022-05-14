@@ -382,9 +382,11 @@ Renderer.drawScene = function (gl) {
   const skyboxProjectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4 + Game.cars[0].speed, ratio, 0.1, 500);
   const projectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4 + Game.cars[0].speed, ratio, 1, 500);
 
-
-  this.drawSkybox(skyboxProjectionMatrix, invV);
+  if(Renderer.skyboxEnabled)
+    this.drawSkybox(skyboxProjectionMatrix, invV);
   
+  gl.depthMask(true);
+  gl.useProgram(this.uniformShader);
 
 
   gl.uniformMatrix4fv(this.uniformShader.uProjectionMatrixLocation, false, projectionMatrix);
@@ -472,8 +474,6 @@ Renderer.drawSkybox = function(projT,viewT){
   
   gl.depthMask(false);
   this.drawObject(gl, this.cube,this.skyboxShader,[1, 0, 0, 0], [1, 0, 0, 0]);
-  gl.depthMask(true);
-  gl.useProgram(this.uniformShader);
 }
 
 
@@ -489,6 +489,10 @@ Renderer.setupAndStart = function () {
   //attiva di default le textures
   document.getElementById("textures").checked = true;
   Renderer.texturesEnabled = true;
+
+  //attiva di default la skybox
+  document.getElementById("skybox").checked = true;
+  Renderer.skyboxEnabled = true;
 
   //se attivo il wireframe, si disattivano le textures
   document.getElementById('wireframe').onclick = function() {
