@@ -67,6 +67,10 @@ uniformShader = function (gl) {//line 1,Listing 2.14
     varying vec2 vHeadlightSxTextureCoords;
     uniform sampler2D uHeadlightSampler;
 
+    //shadow map
+    uniform sampler2D uHeadlightSx;
+    uniform sampler2D uHeadlightDx;
+
 
     void main(void){
       //textures abilitate?
@@ -116,6 +120,7 @@ uniformShader = function (gl) {//line 1,Listing 2.14
       vec3 spotlightColor = vec3(0.996, 0.698, 0.902) /*very cool colour*/ * spotlightLight;
 
       gl_FragColor = vec4(diffuseColor + specularColor + spotlightColor + (headlightColorDx.rgb * headlightColorDx.a) + (headlightColorSx.rgb * headlightColorSx.a), 1.0);
+
 
       //gl_FragColor = vec4(headlightColorDx.r, 0.0, 0.0, 1.0);
       //gl_FragColor = vec4(headlightColorDx.a, 0.0, 0.0, 1.0);
@@ -174,6 +179,10 @@ uniformShader = function (gl) {//line 1,Listing 2.14
   //headlights
   shaderProgram.uHeadlightSxMatrixLocation = gl.getUniformLocation(shaderProgram, "uHeadlightSxMatrix");
   shaderProgram.uHeadlightDxMatrixLocation = gl.getUniformLocation(shaderProgram, "uHeadlightDxMatrix");
+
+  //shadow maps
+  shaderProgram.uHeadlightSxLocation = gl.getUniformLocation(shaderProgram, "uHeadlightSx");
+  shaderProgram.uHeadlightDxLocation = gl.getUniformLocation(shaderProgram, "uHeadlightDx");
 
 
   return shaderProgram;

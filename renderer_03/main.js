@@ -155,7 +155,7 @@ Renderer.createObjectBuffers = function (gl, obj) {
 draw an object as specified in common/shapes/triangle.js for which the buffer 
 have alrady been created
 */
-Renderer.drawObject = function (gl, obj, shader, fillColor, lineColor, textures = this.texturesEnabled) {
+Renderer.drawObject = function (gl, obj, shader, fillColor, lineColor, textures = this.texturesEnabled, whatToDraw = 0) {
 
   gl.bindBuffer(gl.ARRAY_BUFFER, obj.vertexBuffer);
   gl.enableVertexAttribArray(shader.aPositionIndex);
@@ -173,7 +173,7 @@ Renderer.drawObject = function (gl, obj, shader, fillColor, lineColor, textures 
     gl.vertexAttribPointer(shader.aTextureCoordsIndex, 2, gl.FLOAT, false, 0, 0);
   }
 
-  if(this.wireframeEnabled){
+  if(this.wireframeEnabled && whatToDraw == 0){
     gl.enable(gl.POLYGON_OFFSET_FILL);
     gl.polygonOffset(1.0, 1.0);
   }
@@ -183,11 +183,13 @@ Renderer.drawObject = function (gl, obj, shader, fillColor, lineColor, textures 
   }
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, obj.indexBufferTriangles);
-  gl.uniform4fv(shader.uColorLocation, fillColor);
+  if(whatToDraw == 0) {
+    gl.uniform4fv(shader.uColorLocation, fillColor);
+  }
   gl.drawElements(gl.TRIANGLES, obj.triangleIndices.length, gl.UNSIGNED_SHORT, 0);
 
   
-  if(this.wireframeEnabled){
+  if(this.wireframeEnabled && whatToDraw == 0){
     gl.disable(gl.POLYGON_OFFSET_FILL);
     gl.uniform4fv(shader.uColorLocation, lineColor);
     gl.uniform1i(shader.uTexturesEnabledLocation, 0);
@@ -232,7 +234,10 @@ Renderer.initializeObjects = function (gl) {
     roofColor: 2,
     groundColor: 3,
     headlightColor: 4,
-    skybox: 5
+    skybox: 5,
+    //shadow map
+    headlightDx: 6,
+    headlightSx: 7
   }
   this.loadTexture(this.textures.facadeColor, "../common/textures/facade2.jpg");
   this.loadTexture(this.textures.roofColor, "../common/textures/roof.jpg");
@@ -256,7 +261,7 @@ speedWheelAngle = 0;
 /*
 draw the car
 */
-Renderer.drawCar = function (gl) {
+Renderer.drawCar = function (gl, currentShader, whatToDraw) {
 
     M                 = glMatrix.mat4.create();
     rotate_transform  = glMatrix.mat4.create();
@@ -273,9 +278,9 @@ Renderer.drawCar = function (gl) {
 
     Renderer.stack.push();
     Renderer.stack.multiply(M);
-    gl.uniformMatrix4fv(this.uniformShader.uModelViewMatrixLocation, false, this.stack.matrix);
+    gl.uniformMatrix4fv(currentShader.uModelViewMatrixLocation, false, this.stack.matrix);
 
-    this.drawObject(gl,this.cube, this.uniformShader, [0.8,0.6,0.7,1.0], [0, 0, 0, 1], false);
+    this.drawObject(gl,this.cube, currentShader, [0.8,0.6,0.7,1.0], [0, 0, 0, 1], false, whatToDraw);
     Renderer.stack.pop();
 
     // Wheels matrix
@@ -313,9 +318,9 @@ Renderer.drawCar = function (gl) {
 
     Renderer.stack.push();
     Renderer.stack.multiply(M);
-    gl.uniformMatrix4fv(this.uniformShader.uModelViewMatrixLocation, false, this.stack.matrix);
+    gl.uniformMatrix4fv(currentShader.uModelViewMatrixLocation, false, this.stack.matrix);
   
-    this.drawObject(gl,this.cylinder,this.uniformShader,[1.0,0.6,0.5,1.0],[0.0,0.0,0.0,1.0], false); //non disegna la texture
+    this.drawObject(gl,this.cylinder,currentShader,[1.0,0.6,0.5,1.0],[0.0,0.0,0.0,1.0], false, whatToDraw); //non disegna la texture
     Renderer.stack.pop();
 
     glMatrix.mat4.fromTranslation(translate_matrix,[0.8,0.2,-0.7]);
@@ -324,8 +329,8 @@ Renderer.drawCar = function (gl) {
 
     Renderer.stack.push();
     Renderer.stack.multiply(M);
-    gl.uniformMatrix4fv(this.uniformShader.uModelViewMatrixLocation, false, this.stack.matrix); 
-    this.drawObject(gl,this.cylinder,this.uniformShader,[1.0,0.6,0.5,1.0],[0.0,0.0,0.0,1.0], false); //non disegna la texture
+    gl.uniformMatrix4fv(currentShader.uModelViewMatrixLocation, false, this.stack.matrix); 
+    this.drawObject(gl,this.cylinder,currentShader,[1.0,0.6,0.5,1.0],[0.0,0.0,0.0,1.0], false, whatToDraw); //non disegna la texture
     Renderer.stack.pop();
 
     /* this will increase the size of the wheel to 0.4*1,5=0.6 */
@@ -338,18 +343,18 @@ Renderer.drawCar = function (gl) {
   
     Renderer.stack.push();
     Renderer.stack.multiply(M);
-    gl.uniformMatrix4fv(this.uniformShader.uModelViewMatrixLocation, false, this.stack.matrix); 
+    gl.uniformMatrix4fv(currentShader.uModelViewMatrixLocation, false, this.stack.matrix); 
     Renderer.stack.pop();
 
-    this.drawObject(gl,this.cylinder,this.uniformShader,[1.0,0.6,0.5,1.0],[0.0,0.0,0.0,1.0], false); //non disegna la texture
+    this.drawObject(gl,this.cylinder,currentShader,[1.0,0.6,0.5,1.0],[0.0,0.0,0.0,1.0], false, whatToDraw); //non disegna la texture
 
     glMatrix.mat4.fromTranslation(translate_matrix,[-0.8,0.3,0.7]);
     glMatrix.mat4.mul(M,translate_matrix,Mw);
   
     Renderer.stack.push();
     Renderer.stack.multiply(M);
-    gl.uniformMatrix4fv(this.uniformShader.uModelViewMatrixLocation, false, this.stack.matrix); 
-    this.drawObject(gl,this.cylinder,this.uniformShader,[1.0,0.6,0.5,1.0],[0.0,0.0,0.0,1.0], false); //non disegna la texture
+    gl.uniformMatrix4fv(currentShader.uModelViewMatrixLocation, false, this.stack.matrix); 
+    this.drawObject(gl,this.cylinder,currentShader,[1.0,0.6,0.5,1.0],[0.0,0.0,0.0,1.0], false, whatToDraw); //non disegna la texture
     Renderer.stack.pop();
 };
 
@@ -400,12 +405,63 @@ Renderer.createCubeMap = function (tu,gl, posx, negx, posy, negy, posz, negz) { 
   return texture;
 }
 
+Renderer.createFramebuffer = function(gl, right){
+  var width = this.canvas.width;
+  var height = this.canvas.height;
+  var ratio = width / height;
 
-Renderer.drawScene = function (gl) {
+  gl.activeTexture(gl.TEXTURE0 + right ? this.textures.headlightDx : this.textures.headlightSx); //mette all'interno delle texture giuste il rendering dei faretti
+  targetTexture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, targetTexture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+  framebuffer = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer); //bind, gl disegna su quel framebuffer
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0); //associo texture al colore di quel framebuffer, il colore va sul framebuffer
+
+  depthBuffer = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthBuffer);
+
+  if(right){
+    this.headlightDxTexture = targetTexture;
+    this.headlightDxFramebuffer = framebuffer;
+  }else{
+    this.headlightSxTexture = targetTexture;
+    this.headlightSxFramebuffer = framebuffer;
+  }
+}
+
+Renderer.drawScene = function (gl, whatToDraw) {
+  /*
+  whatToDraw = 0 => render scena
+  whatToDraw = 1 => render faro sinistro (shadow map)
+  whatToDraw = 2 => render faro destro (shadow map)
+  */
 
   var width = this.canvas.width;
-  var height = this.canvas.height
+  var height = this.canvas.height;
   var ratio = width / height;
+  if(whatToDraw != 0){
+    if(typeof Renderer.headlightDxTexture == 'undefined'){
+      this.createFramebuffer(gl, true)
+      this.createFramebuffer(gl, false)
+    }
+
+    if(whatToDraw == 1){ //disegna sul framebuffer sx
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.headlightSxFramebuffer); //bind, gl disegna su quel framebuffer
+    }else{ //disegna sul framebuffer dx
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.headlightDxFramebuffer); //bind, gl disegna su quel framebuffer
+    }
+  }else{ //disegna sul canvas
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
   this.stack = new MatrixStack();
 
   gl.viewport(0, 0, width, height);
@@ -416,60 +472,77 @@ Renderer.drawScene = function (gl) {
   gl.clearColor(0.34, 0.5, 0.74, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-
-  Renderer.cameras[Renderer.currentCamera].update(this.car.frame);
-  var invV = Renderer.cameras[Renderer.currentCamera].matrix();
-  const skyboxProjectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4 + Game.cars[0].speed, ratio, 0.1, 500);
-  const projectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4 + Game.cars[0].speed, ratio, 1, 500);
-
-  if(Renderer.skyboxEnabled)
-    this.drawSkybox(skyboxProjectionMatrix, invV);
-  
-  gl.depthMask(true);
-  gl.useProgram(this.uniformShader);
-
-
-  gl.uniformMatrix4fv(this.uniformShader.uProjectionMatrixLocation, false, projectionMatrix);
+  var skyboxProjectionMatrix;
+  if(whatToDraw == 0) {
+    Renderer.cameras[Renderer.currentCamera].update(this.car.frame);
+    var invV = Renderer.cameras[Renderer.currentCamera].matrix(); //view matrix
+    skyboxProjectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4 + Game.cars[0].speed, ratio, 0.1, 500);
+    //const projectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4 + Game.cars[0].speed, ratio, 1, 500);
+  } else if(whatToDraw == 1) { //rendering faro sinistro
+    var invV = Game.cars[0].headlightSxMatrix; //matrice di vista
+    //const projectionMatrix = 
+  }else if(whatToDraw == 2) { //rendering faro destro
+    var invV = Game.cars[0].headlightDxMatrix; //matrice di vista
+  }
+  const projectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4 + Game.cars[0].speed, ratio, 0.1, 300);
   //la prospettiva della camera dipende dalla velocità
   //il /4 è per l'angolo, più è grande il valore più è piccolo l'angolo
 
+  if(Renderer.skyboxEnabled && whatToDraw == 0)
+    this.drawSkybox(skyboxProjectionMatrix, invV);
+  
+  gl.depthMask(true); //depth buffer
+  let currentShader = whatToDraw == 0 ? this.uniformShader : this.shadowmapShader;
+  gl.useProgram(currentShader);
+
+
+  gl.uniformMatrix4fv(currentShader.uProjectionMatrixLocation, false, projectionMatrix);
 
   //headlights, passo allo shader le matrici dei fari
-  gl.uniformMatrix4fv(this.uniformShader.uHeadlightSxMatrixLocation, false, Game.cars[0].headlightSxMatrix); //passo allo shader la matrice sx dei fari
-  gl.uniformMatrix4fv(this.uniformShader.uHeadlightDxMatrixLocation, false, Game.cars[0].headlightDxMatrix); //passo allo shader la matrice dx dei fari
+  if(whatToDraw == 0) {
+    //shadow map
+    this.gl.uniform1i(currentShader.uHeadlightSxLocation, this.textures.headlightSx); //carico la texture rendering faretto sx
+    this.gl.uniform1i(currentShader.uHeadlightDxLocation, this.textures.headlightDx); //carico la texture rendering faretto dx
 
-  //PHONG
-  inverseViewMatrix = glMatrix.mat4.create(); //view matrix
-  glMatrix.mat4.invert(inverseViewMatrix, invV); //calcolo l'inversa della view matrix
-  viewSpaceLightDirection = glMatrix.vec4.create(); //direzione della luce in view space, che si ottiene moltiplicando l'inversa del view matrix con il vettore 
-  tmpDirection = Game.scene.weather.sunLightDirection; //serve un vettore a 4 componenti
-  tmpDirection[3] = 0; //metto la 4a componente a 0 (vettore)
-  glMatrix.vec4.transformMat4(viewSpaceLightDirection, tmpDirection, invV); //moltiplica la matrice per il vettore
-  glMatrix.vec4.normalize(viewSpaceLightDirection, viewSpaceLightDirection);
-  gl.uniform3fv(this.uniformShader.uViewSpaceLightDirectionLocation, viewSpaceLightDirection.subarray(0,3)); //inserisce il valore nello shader
+    gl.uniformMatrix4fv(currentShader.uHeadlightSxMatrixLocation, false, Game.cars[0].headlightSxMatrix); //passo allo shader la matrice sx dei fari
+    gl.uniformMatrix4fv(currentShader.uHeadlightDxMatrixLocation, false, Game.cars[0].headlightDxMatrix); //passo allo shader la matrice dx dei fari
+  
 
-  //console.log(viewSpaceLightDirection);
+    //PHONG
+    inverseViewMatrix = glMatrix.mat4.create(); //view matrix
+    glMatrix.mat4.invert(inverseViewMatrix, invV); //calcolo l'inversa della view matrix
+    viewSpaceLightDirection = glMatrix.vec4.create(); //direzione della luce in view space, che si ottiene moltiplicando l'inversa del view matrix con il vettore 
+    tmpDirection = Game.scene.weather.sunLightDirection; //serve un vettore a 4 componenti
+    tmpDirection[3] = 0; //metto la 4a componente a 0 (vettore)
+    glMatrix.vec4.transformMat4(viewSpaceLightDirection, tmpDirection, invV); //moltiplica la matrice per il vettore
+    glMatrix.vec4.normalize(viewSpaceLightDirection, viewSpaceLightDirection);
+    gl.uniform3fv(currentShader.uViewSpaceLightDirectionLocation, viewSpaceLightDirection.subarray(0,3)); //inserisce il valore nello shader
+  
 
-  //passo i lampioni allo shader
-  var spotlights = []; //line 304
-    //prima creo una matrice per inserire i vettori da passare allo shader e li trasformo in VS
-  for(var i = 0; i < Game.scene.lamps.length; i++){
-    var vsSpotlight = glMatrix.vec3.transformMat4(
-      glMatrix.vec3.create(),
-      [
-        Game.scene.lamps[i].position[0],
-        Game.scene.lamps[i].height,
-        Game.scene.lamps[i].position[2]
-      ],
-      invV
-    );
-    spotlights[i * 3 + 0] = vsSpotlight[0];
-    spotlights[i * 3 + 1] = vsSpotlight[1];
-    spotlights[i * 3 + 2] = vsSpotlight[2];
+    //console.log(viewSpaceLightDirection);
+
+    //passo i lampioni allo shader
+    var spotlights = []; //line 304
+      //prima creo una matrice per inserire i vettori da passare allo shader e li trasformo in VS
+    for(var i = 0; i < Game.scene.lamps.length; i++){
+      var vsSpotlight = glMatrix.vec3.transformMat4(
+        glMatrix.vec3.create(),
+        [
+          Game.scene.lamps[i].position[0],
+          Game.scene.lamps[i].height,
+          Game.scene.lamps[i].position[2]
+        ],
+        invV
+      );
+      spotlights[i * 3 + 0] = vsSpotlight[0];
+      spotlights[i * 3 + 1] = vsSpotlight[1];
+      
+      spotlights[i * 3 + 2] = vsSpotlight[2];
+    }
+    gl.uniform3fv(currentShader.uSpotlightsLocation, spotlights); //passo allo shader
   }
-  gl.uniform3fv(this.uniformShader.uSpotlightsLocation, spotlights); //passo allo shader
 
-  gl.uniformMatrix4fv(this.uniformShader.uViewMatrixLocation, false, invV); //passo allo shader la View Matrix
+  gl.uniformMatrix4fv(currentShader.uViewMatrixLocation, false, invV); //passo allo shader la View Matrix
   
   // initialize the stack with the identity
   this.stack.loadIdentity();
@@ -479,24 +552,33 @@ Renderer.drawScene = function (gl) {
   // drawing the car
   this.stack.push();
   this.stack.multiply(this.car.frame); // projection * viewport
-  //gl.uniformMatrix4fv(this.uniformShader.uModelViewMatrixLocation, false, stack.matrix);
-  this.drawCar(gl);
+  //gl.uniformMatrix4fv(currentShader.uModelViewMatrixLocation, false, stack.matrix);
+  this.drawCar(gl, currentShader, whatToDraw);
   this.stack.pop();
+  
 
-  gl.uniformMatrix4fv(this.uniformShader.uModelViewMatrixLocation, false, this.stack.matrix);
+  gl.uniformMatrix4fv(currentShader.uModelViewMatrixLocation, false, this.stack.matrix);
 
   // drawing the static elements (ground, track and buildings)
-  this.gl.uniform1i(this.uniformShader.uSamplerLocation, this.textures.groundColor); //carico la texture
-  this.gl.uniform1i(this.uniformShader.uHeadlightSamplerLocation, this.textures.headlightColor); //carico la texture
-	this.drawObject(gl, Game.scene.groundObj,this.uniformShader, [0.3, 0.7, 0.2, 1.0], [0, 0, 0, 1.0]);
+  if(whatToDraw == 0) {
+    this.gl.uniform1i(currentShader.uSamplerLocation, this.textures.groundColor); //carico la texture
+    this.gl.uniform1i(currentShader.uHeadlightSamplerLocation, this.textures.headlightColor); //carico la texture
+  }
+	this.drawObject(gl, Game.scene.groundObj,currentShader, [0.3, 0.7, 0.2, 1.0], [0, 0, 0, 1.0], this.texturesEnabled, whatToDraw);
   //texture track
-  this.gl.uniform1i(this.uniformShader.uSamplerLocation, this.textures.trackColor); //carico la texture
- 	this.drawObject(gl, Game.scene.trackObj,this.uniformShader, [0.9, 0.8, 0.7, 1.0], [0, 0, 0, 1.0]);
+  if(whatToDraw == 0) {
+    this.gl.uniform1i(currentShader.uSamplerLocation, this.textures.trackColor); //carico la texture
+  }
+  this.drawObject(gl, Game.scene.trackObj,currentShader, [0.9, 0.8, 0.7, 1.0], [0, 0, 0, 1.0], this.texturesEnabled, whatToDraw);
 	for (var i in Game.scene.buildingsObjTex){
-    this.gl.uniform1i(this.uniformShader.uSamplerLocation, this.textures.facadeColor); //carico la texture
-		this.drawObject(gl, Game.scene.buildingsObjTex[i],this.uniformShader, [0.8, 0.8, 0.8, 1.0], [0.2, 0.2, 0.2, 1.0]);
-    this.gl.uniform1i(this.uniformShader.uSamplerLocation, this.textures.roofColor); //carico la texture
-		this.drawObject(gl, Game.scene.buildingsObjTex[i].roof,this.uniformShader, [0.8, 0.8, 0.8, 1.0], [0.2, 0.2, 0.2, 1.0]); //soffitto
+    if(whatToDraw == 0) {
+      this.gl.uniform1i(currentShader.uSamplerLocation, this.textures.facadeColor); //carico la texture
+    }
+    this.drawObject(gl, Game.scene.buildingsObjTex[i],currentShader, [0.8, 0.8, 0.8, 1.0], [0.2, 0.2, 0.2, 1.0], this.texturesEnabled, whatToDraw);
+    if(whatToDraw == 0) {
+      this.gl.uniform1i(currentShader.uSamplerLocation, this.textures.roofColor); //carico la texture
+    }
+    this.drawObject(gl, Game.scene.buildingsObjTex[i].roof,currentShader, [0.8, 0.8, 0.8, 1.0], [0.2, 0.2, 0.2, 1.0], this.texturesEnabled, whatToDraw); //soffitto
   }
 	gl.useProgram(null);
 };
@@ -519,7 +601,9 @@ Renderer.drawSkybox = function(projT,viewT){
 
 
 Renderer.Display = function () {
-  Renderer.drawScene(Renderer.gl);
+  Renderer.drawScene(Renderer.gl, 1);
+  Renderer.drawScene(Renderer.gl, 2);
+  Renderer.drawScene(Renderer.gl, 0);
   window.requestAnimationFrame(Renderer.Display) ;
 };
 
@@ -568,6 +652,7 @@ Renderer.setupAndStart = function () {
   /* create the shaders */
   Renderer.uniformShader = new uniformShader(Renderer.gl);
   Renderer.skyboxShader = new skyboxShader(Renderer.gl);
+  Renderer.shadowmapShader = new shadowMapShader(Renderer.gl);
 
   /*
   add listeners for the mouse / keyboard events
