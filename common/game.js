@@ -103,10 +103,10 @@ class Car {
 		let targetSx = glMatrix.vec3.create();
 		let headlightsOriginSx = glMatrix.vec3.create();
 		let headlightsOriginDx = glMatrix.vec3.create();
-		glMatrix.vec3.transformMat4(headlightsOriginSx, [-1.3, 0.5, -0.3, 1.0], this.frame); //relativo al frame della macchina
-		glMatrix.vec3.transformMat4(headlightsOriginDx, [0.1, 0.5, -0.3, 1.0], this.frame); //relativo al frame della macchina
-		glMatrix.vec3.transformMat4(targetDx, [0.1, 0, -1,1.0], this.frame); //target, dove punta la luce (in avanti un pochino verso il basso)
-		glMatrix.vec3.transformMat4(targetSx, [-1.3, 0, -1,1.0], this.frame); //target, dove punta la luce (in avanti un pochino verso il basso)
+		glMatrix.vec3.transformMat4(headlightsOriginSx, [-0.4, 1, -0.3, 1.0], this.frame); //relativo al frame della macchina
+		glMatrix.vec3.transformMat4(headlightsOriginDx, [0.4, 1, -0.3, 1.0], this.frame); //relativo al frame della macchina
+		glMatrix.vec3.transformMat4(targetDx, [0.4, 0.8, -1,1.0], this.frame); //target, dove punta la luce (in avanti un pochino verso il basso)
+		glMatrix.vec3.transformMat4(targetSx, [-0.4, 0.8, -1,1.0], this.frame); //target, dove punta la luce (in avanti un pochino verso il basso)
 		this.headlightSxMatrix = glMatrix.mat4.lookAt(this.headlightSxMatrix,headlightsOriginSx, targetSx,[0, 1, 0]); //matrice che guarda dall'origine della luce al target
 		this.headlightDxMatrix = glMatrix.mat4.lookAt(this.headlightDxMatrix,headlightsOriginDx, targetDx,[0, 1, 0]);
 	  }       
@@ -143,6 +143,10 @@ Game = {
 				];
 
 	  Game.scene.groundObj = new QuadGround(quad,10);
+
+	  //lampioni
+	  Game.scene.lampione = new Cylinder(1000);
+
 
 	  Game.scene.buildingsObj  = new Array(Game.scene.buildings.length);
 	  Game.scene.buildingsObjTex  = new Array(Game.scene.buildings.length);

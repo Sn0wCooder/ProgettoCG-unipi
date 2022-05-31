@@ -7,8 +7,7 @@ uniformShader = function (gl) {//line 1,Listing 2.14
     uniform mat4 uViewMatrix;
 
     //headlight
-    uniform mat4 uHeadlightDxMatrix;
-    uniform mat4 uHeadlightSxMatrix;
+    uniform mat4 uInverseViewMatrix;
 
     //PHONG
     //uniform   vec3 uViewSpaceLightDirection;
@@ -24,9 +23,9 @@ uniformShader = function (gl) {//line 1,Listing 2.14
     varying vec3 vVSSpotlightDirection;
     varying vec2 vTextureCoords;
 
-    //coordinate texture headlights
-    varying vec2 vHeadlightDxTextureCoords;
-    varying vec2 vHeadlightSxTextureCoords;
+    //coordinate in clip space headlights
+
+    varying vec4 vPosition;
 
 
     void main(void){
@@ -41,8 +40,10 @@ uniformShader = function (gl) {//line 1,Listing 2.14
 
       vTextureCoords = aTextureCoords;
       //calcolo coordinate texture headlights
-      vHeadlightDxTextureCoords = (uHeadlightDxMatrix * vec4(aPosition, 1.0)).xy * 0.8; //*0.8: ingrandisce la texture headlights
-      vHeadlightSxTextureCoords = (uHeadlightSxMatrix * vec4(aPosition, 1.0)).xy * 0.8;
+
+      mat4 modelMatrix = uInverseViewMatrix * uModelViewMatrix;
+
+      vPosition = modelMatrix * vec4(aPosition, 1.0);
     }
   `;
 
@@ -63,13 +64,15 @@ uniformShader = function (gl) {//line 1,Listing 2.14
     varying vec3 vVSSpotlightDirection;
     
     //coordinate texture headlights
-    varying vec2 vHeadlightDxTextureCoords;
-    varying vec2 vHeadlightSxTextureCoords;
     uniform sampler2D uHeadlightSampler;
+    uniform mat4 uHeadlightDxMatrix;
+    uniform mat4 uHeadlightSxMatrix;
 
     //shadow map
     uniform sampler2D uHeadlightSx;
     uniform sampler2D uHeadlightDx;
+
+    varying vec4 vPosition;
 
 
     void main(void){
@@ -91,17 +94,42 @@ uniformShader = function (gl) {//line 1,Listing 2.14
       float specularLight = max(0.0, pow(dot(vViewSpaceViewDirection, reflectedLightDirection), 1.0)); //10 shininess
       vec3 specularColor = color * specularLight; //riflesso del colore delle texture
 
+
+
+
+
+
+      vec4 vHeadlightDxTextureCoords = (uHeadlightDxMatrix * vPosition); //*0.8: ingrandisce la texture headlights
+      vec4 vHeadlightSxTextureCoords = (uHeadlightSxMatrix * vPosition);
+
+      vHeadlightDxTextureCoords /= vHeadlightDxTextureCoords.w; //divido per l'ultima componente per la proiezione prospettica
+      vHeadlightSxTextureCoords /= vHeadlightSxTextureCoords.w;
+
+      vHeadlightDxTextureCoords = vHeadlightDxTextureCoords * 0.5 + 0.5; //così le coordinate texture vanno da 0 a 1
+      vHeadlightSxTextureCoords = vHeadlightSxTextureCoords * 0.5 + 0.5;
+
       //headlights
       vec4 headlightColorDx;
       if(vHeadlightDxTextureCoords.x >= 0.0 && vHeadlightDxTextureCoords.x <= 1.0 && vHeadlightDxTextureCoords.y >= 0.0 && vHeadlightDxTextureCoords.y <= 1.0){
-        headlightColorDx = texture2D(uHeadlightSampler, vHeadlightDxTextureCoords);
+        float depth = texture2D(uHeadlightDx, vHeadlightDxTextureCoords.xy).z; //shadow map
+        if(depth + 0.005 > vHeadlightDxTextureCoords.z){ //se è minore ci metto il valore della texture (proietto il faretto)
+          headlightColorDx = texture2D(uHeadlightSampler, vHeadlightDxTextureCoords.xy);
+        }else{
+          headlightColorDx = vec4(0.0,0.0,0.0,0.0);
+        }
       }else{
         headlightColorDx = vec4(0.0,0.0,0.0,0.0);
       }
 
       vec4 headlightColorSx;
       if(vHeadlightSxTextureCoords.x >= 0.0 && vHeadlightSxTextureCoords.x <= 1.0 && vHeadlightSxTextureCoords.y >= 0.0 && vHeadlightSxTextureCoords.y <= 1.0){
-        headlightColorSx = texture2D(uHeadlightSampler, vHeadlightSxTextureCoords);
+        float depth = texture2D(uHeadlightSx, vHeadlightSxTextureCoords.xy).z; //shadow map
+        if(depth + 0.005 > vHeadlightSxTextureCoords.z){ //se è minore ci metto il valore della texture (proietto il faretto)
+          headlightColorSx = texture2D(uHeadlightSampler, vHeadlightSxTextureCoords.xy);
+          //headlightColorSx = vHeadlightSxTextureCoords;
+        }else{
+          headlightColorSx = vec4(0.0,0.0,0.0,0.0);
+        }
       }else{
         headlightColorSx = vec4(0.0,0.0,0.0,0.0);
       }
@@ -167,6 +195,7 @@ uniformShader = function (gl) {//line 1,Listing 2.14
   shaderProgram.uColorLocation = gl.getUniformLocation(shaderProgram, "uColor");
   shaderProgram.uViewSpaceLightDirectionLocation = gl.getUniformLocation(shaderProgram, "uViewSpaceLightDirection");
   shaderProgram.uViewMatrixLocation = gl.getUniformLocation(shaderProgram, "uViewMatrix");
+  shaderProgram.uInverseViewMatrixLocation = gl.getUniformLocation(shaderProgram, "uInverseViewMatrix"); //inversa view matrix
 
   //spotlights
   shaderProgram.uSpotlightsLocation = gl.getUniformLocation(shaderProgram, "uSpotlights");
@@ -183,6 +212,8 @@ uniformShader = function (gl) {//line 1,Listing 2.14
   //shadow maps
   shaderProgram.uHeadlightSxLocation = gl.getUniformLocation(shaderProgram, "uHeadlightSx");
   shaderProgram.uHeadlightDxLocation = gl.getUniformLocation(shaderProgram, "uHeadlightDx");
+
+
 
 
   return shaderProgram;
