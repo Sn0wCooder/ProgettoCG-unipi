@@ -14,7 +14,7 @@ function Cylinder (resolution) {
 	
 	var radius = 1.0;
 	var angle;
-	var step = 6.283185307179586476925286766559 / resolution;
+	var step = Math.PI * 2 / resolution;
 	
 	// lower circle
 	var vertexoffset = 0;
@@ -89,4 +89,29 @@ function Cylinder (resolution) {
 		
 	this.numVertices = this.vertices.length/3;
 	this.numTriangles = this.triangleIndices.length/3;
+
+
+	//texture
+	var nv = this.vertices.length
+	var vertexOffset = 0
+	var min_u = 0;
+	var max_u = 1;
+	var min_v = 0;
+	var max_v = 1;
+	var scale = 1;
+	this.texCoords = new Float32Array( nv * 2);
+	for (var i=0; i<nv; ++i) {
+		this.texCoords[vertexOffset + 0] = scale*(this.vertices[3*i] - min_u)/max_u;
+		this.texCoords[vertexOffset + 1] = scale*(this.vertices[3*i+2] - min_v)/max_v;
+		vertexOffset += 2;
+	}
+
+	this.texCoords[0] = 0.0;
+	this.texCoords[1] = 0.0;
+	this.texCoords[2] = 1.0;
+	this.texCoords[3] = 0.0;
+	this.texCoords[4] = 1.0;
+	this.texCoords[5] = 1.0;
+	this.texCoords[6] = 0.0;
+	this.texCoords[7] = 1.0;
 }
