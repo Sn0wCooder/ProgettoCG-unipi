@@ -1,17 +1,18 @@
 skyboxShader = function (gl) {
-	var vertexShaderSource = `
-		uniform   mat4 uViewMatrix;	 
-		uniform   mat4 uProjectionMatrix;	 
-		attribute vec3 aPosition;					 
-		varying vec3 vpos;								 
-		void main(void)	{							
-			vpos = normalize(aPosition);		 
-			gl_Position = uProjectionMatrix* vec4((uViewMatrix * vec4(aPosition, 0.0)).xyz,1.0); 
+	var vertexShaderSource = glsl`
+		uniform   mat4 uViewMatrix;
+		uniform   mat4 uProjectionMatrix;
+		attribute vec3 aPosition;
+		varying vec3 vpos; //posizione obj space
+		void main(void)	{
+			vpos = normalize(aPosition);
+			//l'obj space coincide con il world, sei al centro
+			gl_Position = uProjectionMatrix * vec4((uViewMatrix * vec4(aPosition, 0.0)).xyz,1.0); //0.0 ignora la traslazione della view matrix, lo rimette a 1 perchè è una posizione
 		}`;
 		
-	var fragmentShaderSource = `
-		precision highp float;					 
-		uniform  samplerCube  uSamplerCM;
+	var fragmentShaderSource = glsl`
+		precision highp float;
+		uniform  samplerCube  uSamplerCM; //una texture composta da 6 immagini
 		varying vec3 vpos;
 		
 		void main(void)	{

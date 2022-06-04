@@ -6,18 +6,18 @@ shadowMapShader = function (gl) {//line 1,Listing 2.14
     
     attribute vec3 aPosition; //posizione del vertice
     
-    varying vec3 vPosVS; //posizione punto
+    //varying vec3 vPosVS; //posizione punto
 
     void main(void){
       gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
-      vPosVS = (uModelViewMatrix * vec4(aPosition, 1.0)).xyz; //posizione in VS
+      //vPosVS = (uModelViewMatrix * vec4(aPosition, 1.0)).xyz; //posizione in VS
     }
   `;
 
   var fragmentShaderSource = glsl`
     precision highp float;
 
-    varying vec3 vPosVS;
+    //varying vec3 vPosVS;
 
     void main(void){
       gl_FragColor = vec4(gl_FragCoord.z, gl_FragCoord.z, gl_FragCoord.z, 1.0); //uso il colore come profondità
