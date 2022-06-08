@@ -195,6 +195,21 @@ Renderer.drawLamps = function(gl, currentShader, invV, whatToDraw) {
 
     M = glMatrix.mat4.create();
   }
+
+  let m = glMatrix.mat4.create();
+  glMatrix.mat4.fromRotation(m, Math.PI, [1,0,0]);
+  let t = glMatrix.mat4.create();
+  glMatrix.mat4.fromTranslation(t, [0, -1, 0]);
+  glMatrix.mat4.mul(m, t, m);
+  glMatrix.mat4.mul(m, invV, m);
+
+  gl.uniformMatrix4fv(currentShader.uModelViewMatrixLocation, false, m);
+  // drawing the static elements (ground, track and buildings)
+  if(whatToDraw == 0) {
+    this.gl.uniform1i(currentShader.uSamplerLocation, this.textures.groundColor); //carico la texture
+    this.gl.uniform1i(currentShader.uHeadlightSamplerLocation, this.textures.headlightColor); //carico la texture
+  }
+	this.drawObject(gl, Game.scene.groundObj,currentShader, [0.3, 0.7, 0.2, 1.0], [0, 0, 0, 1.0], this.texturesEnabled, whatToDraw); //disegna ground
 };
 
 
@@ -458,8 +473,8 @@ Renderer.createCubeMap = function (tu,gl, posx, negx, posy, negy, posz, negz) { 
 }
 
 Renderer.createFramebuffer = function(gl, right, whatToDraw){ //crea un framebuffer per farci rendering dentro
-  var width = this.canvas.width;
-  var height = this.canvas.height;
+  var width = this.canvas.width * 2;
+  var height = this.canvas.height * 2;
   var ratio = width / height;
   //alert(gl.MAX_TEXTURE_IMAGE_UNITS - gl.TEXTURE0);
 
@@ -500,9 +515,8 @@ Renderer.drawScene = function (gl, whatToDraw) {
   whatToDraw = 2 => render faro destro (shadow map)
   */
 
-  var width = this.canvas.width;
-  var height = this.canvas.height;
-  var ratio = width / height;
+  var width;
+  var height;
   if(whatToDraw != 0){ //sto facendo il render di uno dei due faretti
     if(typeof Renderer.headlightDxTexture == 'undefined'){ //se è il primo che sto facendo creo i framebuffer
       this.createFramebuffer(gl, true, whatToDraw)
@@ -512,16 +526,26 @@ Renderer.drawScene = function (gl, whatToDraw) {
     if(whatToDraw == 1){ //disegna sul framebuffer sx
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.headlightSxFramebuffer); //bind, gl disegna su quel framebuffer
     }else{ //disegna sul framebuffer dx
+      //gl.bindFramebuffer(gl.FRAMEBUFFER, null); //bind, gl disegna su quel framebuffer
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.headlightDxFramebuffer); //bind, gl disegna su quel framebuffer
     }
-    gl.clearColor(0, 0, 0, 1.0); //definisce il colore desiderato (canvas)
+    gl.clearColor(1, 1, 1, 1.0); //definisce il colore desiderato (canvas)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); //pulisce lo schermo
+    gl.enable(gl.CULL_FACE)
+		gl.cullFace(gl.FRONT)
+    width = this.canvas.width * 2;
+    height = this.canvas.height * 2;
   }else{ //disegna sul canvas
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     // Clear the framebuffer
     gl.clearColor(0.34, 0.5, 0.74, 1.0); //definisce il colore desiderato (canvas)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); //pulisce lo schermo
+    gl.enable(gl.CULL_FACE)
+		gl.cullFace(gl.BACK)
+    width = this.canvas.width;
+    height = this.canvas.height;
   }
+  var ratio = width / height;
 
   this.stack = new MatrixStack();
 
@@ -541,10 +565,10 @@ Renderer.drawScene = function (gl, whatToDraw) {
   } else if(whatToDraw == 1) { //rendering faro sinistro
     var invV = Game.cars[0].headlightSxMatrix; //matrice di vista
     //const projectionMatrix = 
-    projectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4, 1, 0.1, 100); //proiezione prospettica headlights
+    projectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4, 1, 0.1, 300); //proiezione prospettica headlights
   }else if(whatToDraw == 2) { //rendering faro destro
     var invV = Game.cars[0].headlightDxMatrix; //matrice di vista
-    projectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4, 1, 0.1, 100); //proiezione prospettica headlights
+    projectionMatrix = glMatrix.mat4.perspective(glMatrix.mat4.create(), Math.PI / 4, 1, 0.1, 300); //proiezione prospettica headlights
   }
 
   if(Renderer.skyboxEnabled && whatToDraw == 0){ //disegna la skybox solo se facciamo il render della scena, non dei faretti (sprechiamo solo calcoli altrimenti)
@@ -553,6 +577,7 @@ Renderer.drawScene = function (gl, whatToDraw) {
   
   gl.depthMask(true); //depth buffer
   let currentShader = whatToDraw == 0 ? this.uniformShader : this.shadowmapShader; //decide lo shader da utilizzare
+  //currentShader = this.shadowMapShader;
   gl.useProgram(currentShader);
 
 
@@ -629,7 +654,7 @@ Renderer.drawScene = function (gl, whatToDraw) {
     this.gl.uniform1i(currentShader.uHeadlightSamplerLocation, this.textures.headlightColor); //carico la texture
   }
 	this.drawObject(gl, Game.scene.groundObj,currentShader, [0.3, 0.7, 0.2, 1.0], [0, 0, 0, 1.0], this.texturesEnabled, whatToDraw); //disegna ground
-  
+
   //texture track
   if(whatToDraw == 0) {
     this.gl.uniform1i(currentShader.uSamplerLocation, this.textures.trackColor); //carico la texture

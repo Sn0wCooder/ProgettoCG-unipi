@@ -107,11 +107,13 @@ uniformShader = function (gl) {//line 1,Listing 2.14
       vHeadlightDxTextureCoords = vHeadlightDxTextureCoords * 0.5 + 0.5; //così le coordinate texture vanno da 0 a 1 (visto che le coordinate clip: [-1, 1])
       vHeadlightSxTextureCoords = vHeadlightSxTextureCoords * 0.5 + 0.5;
 
+      float slopeDependentBias = clamp(0.005 * tan(acos(dot(vViewSpaceNormal, uViewSpaceLightDirection))), 0.00001, 0.01);
+
       //headlights
       vec4 headlightColorDx;
-      if(vHeadlightDxTextureCoords.x >= 0.0 && vHeadlightDxTextureCoords.x <= 1.0 && vHeadlightDxTextureCoords.y >= 0.0 && vHeadlightDxTextureCoords.y <= 1.0){ //evita il wrapping
+      if(vHeadlightDxTextureCoords.x >= 0.0 && vHeadlightDxTextureCoords.x <= 1.0 && vHeadlightDxTextureCoords.y >= 0.0 && vHeadlightDxTextureCoords.y <= 1.0 && vHeadlightDxTextureCoords.z >= 0.0 && vHeadlightDxTextureCoords.z <= 1.0){ //evita il wrapping
         float depth = texture2D(uHeadlightDx, vHeadlightDxTextureCoords.xy).z; //shadow map
-        if(depth + 0.005 > vHeadlightDxTextureCoords.z){ //se è minore ci metto il valore della texture (proietto il faretto)
+        if(depth + slopeDependentBias > vHeadlightDxTextureCoords.z){ //se è minore ci metto il valore della texture (proietto il faretto)
           headlightColorDx = texture2D(uHeadlightSampler, vHeadlightDxTextureCoords.xy);
         }else{
           headlightColorDx = vec4(0.0,0.0,0.0,0.0);
@@ -121,9 +123,9 @@ uniformShader = function (gl) {//line 1,Listing 2.14
       }
 
       vec4 headlightColorSx;
-      if(vHeadlightSxTextureCoords.x >= 0.0 && vHeadlightSxTextureCoords.x <= 1.0 && vHeadlightSxTextureCoords.y >= 0.0 && vHeadlightSxTextureCoords.y <= 1.0){
+      if(vHeadlightSxTextureCoords.x >= 0.0 && vHeadlightSxTextureCoords.x <= 1.0 && vHeadlightSxTextureCoords.y >= 0.0 && vHeadlightSxTextureCoords.y <= 1.0 && vHeadlightSxTextureCoords.z >= 0.0 && vHeadlightDxTextureCoords.z <= 1.0){
         float depth = texture2D(uHeadlightSx, vHeadlightSxTextureCoords.xy).z; //shadow map
-        if(depth + 0.005 > vHeadlightSxTextureCoords.z){ //se è minore ci metto il valore della texture (proietto il faretto)
+        if(depth + slopeDependentBias > vHeadlightSxTextureCoords.z){ //se è minore ci metto il valore della texture (proietto il faretto)
           headlightColorSx = texture2D(uHeadlightSampler, vHeadlightSxTextureCoords.xy);
         }else{
           headlightColorSx = vec4(0.0,0.0,0.0,0.0);
@@ -147,7 +149,7 @@ uniformShader = function (gl) {//line 1,Listing 2.14
 
       //colore finale, somma di tutte le componenti
       gl_FragColor = vec4(diffuseColor + specularColor + spotlightColor + (headlightColorDx.rgb * headlightColorDx.a) + (headlightColorSx.rgb * headlightColorSx.a), 1.0);
-
+      //gl_FragColor = vHeadlightSxTextureCoords;
 
       //gl_FragColor = vec4(headlightColorDx.r, 0.0, 0.0, 1.0);
       //gl_FragColor = vec4(headlightColorDx.a, 0.0, 0.0, 1.0);
